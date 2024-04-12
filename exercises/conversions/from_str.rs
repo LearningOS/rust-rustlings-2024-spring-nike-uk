@@ -9,55 +9,69 @@
 // Execute `rustlings hint from_str` or use the `hint` watch subcommand for a
 // hint.
 
-use std::num::ParseIntError;
-use std::str::FromStr;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Debug, PartialEq)]
-struct Person {
-    name: String,
-    age: usize,
+struct Color {
+    red: i16,
+    green: i16,
+    blue: i16,
 }
 
-// We will use this error type for the `FromStr` implementation.
-#[derive(Debug, PartialEq)]
-enum ParsePersonError {
-    // Empty input string
-    Empty,
-    // Incorrect number of fields
-    BadLen,
-    // Empty name field
-    NoName,
-    // Wrapped error from parse::<usize>()
-    ParseInt(ParseIntError),
+#[derive(Debug)]
+struct IntoColorError;
+
+impl TryFrom<(i16, i16, i16)> for Color {
+    type Error = IntoColorError;
+
+    fn try_from(tuple: (i16, i16, i16)) -> Result<Self, Self::Error> {
+        let (red, green, blue) = tuple;
+        if red < 0 || green < 0 || blue < 0 {
+            return Err(IntoColorError);
+        }
+        Ok(Color { red, green, blue })
+    }
 }
 
-// I AM NOT DONE
+impl TryFrom<[i16; 3]> for Color {
+    type Error = IntoColorError;
 
-// Steps:
-// 1. If the length of the provided string is 0, an error should be returned
-// 2. Split the given string on the commas present in it
-// 3. Only 2 elements should be returned from the split, otherwise return an
-//    error
-// 4. Extract the first element from the split operation and use it as the name
-// 5. Extract the other element from the split operation and parse it into a
-//    `usize` as the age with something like `"4".parse::<usize>()`
-// 6. If while extracting the name and the age something goes wrong, an error
-//    should be returned
-// If everything goes well, then return a Result of a Person object
-//
-// As an aside: `Box<dyn Error>` implements `From<&'_ str>`. This means that if
-// you want to return a string error message, you can do so via just using
-// return `Err("my error message".into())`.
+    fn try_from(arr: [i16; 3]) -> Result<Self, Self::Error> {
+        let [red, green, blue] = arr;
+        if red < 0 || green < 0 || blue < 0 {
+            return Err(IntoColorError);
+        }
+        Ok(Color { red, green, blue })
+    }
+}
 
-impl FromStr for Person {
-    type Err = ParsePersonError;
-    fn from_str(s: &str) -> Result<Person, Self::Err> {
+impl TryFrom<&[i16]> for Color {
+    type Error = IntoColorError;
+
+    fn try_from(slice: &[i16]) -> Result<Self, Self::Error> {
+        if slice.len() != 3 {
+            return Err(IntoColorError);
+        }
+        let red = slice[0];
+        let green = slice[1];
+        let blue = slice[2];
+        if red < 0 || green < 0 || blue < 0 {
+            return Err(IntoColorError);
+        }
+        Ok(Color { red, green, blue })
     }
 }
 
 fn main() {
-    let p = "Mark,20".parse::<Person>().unwrap();
-    println!("{:?}", p);
+    let tuple_color = (100, 150, 200);
+    let color: Color = tuple_color.try_into().unwrap();
+    println!("{:?}", color);
+
+    let arr_color: Color = [50, 100, 150].try_into().unwrap();
+    println!("{:?}", arr_color);
+
+    let slice_color: Color = &[25, 50, 75][..].try_into().unwrap();
+    println!("{:?}", slice_color);
 }
 
 #[cfg(test)]
@@ -65,69 +79,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn empty_input() {
-        assert_eq!("".parse::<Person>(), Err(ParsePersonError::Empty));
-    }
-    #[test]
-    fn good_input() {
-        let p = "John,32".parse::<Person>();
-        assert!(p.is_ok());
-        let p = p.unwrap();
-        assert_eq!(p.name, "John");
-        assert_eq!(p.age, 32);
-    }
-    #[test]
-    fn missing_age() {
-        assert!(matches!(
-            "John,".parse::<Person>(),
-            Err(ParsePersonError::ParseInt(_))
-        ));
+    fn test_try_from_tuple() {
+        let color = Color::try_from((100, 150, 200)).unwrap();
+        assert_eq!(color, Color { red: 100, green: 150, blue: 200 });
     }
 
     #[test]
-    fn invalid_age() {
-        assert!(matches!(
-            "John,twenty".parse::<Person>(),
-            Err(ParsePersonError::ParseInt(_))
-        ));
+    fn test_try_from_array() {
+        let color = Color::try_from([50, 100, 150]).unwrap();
+        assert_eq!(color, Color { red: 50, green: 100, blue: 150 });
     }
 
     #[test]
-    fn missing_comma_and_age() {
-        assert_eq!("John".parse::<Person>(), Err(ParsePersonError::BadLen));
+    fn test_try_from_slice() {
+        let color = Color::try_from(&[25, 50, 75][..]).unwrap();
+        assert_eq!(color, Color { red: 25, green: 50, blue: 75 });
     }
 
     #[test]
-    fn missing_name() {
-        assert_eq!(",1".parse::<Person>(), Err(ParsePersonError::NoName));
+    fn test_try_from_tuple_negative() {
+        let result = Color::try_from((-1, 150, 200));
+        assert!(result.is_err());
     }
 
     #[test]
-    fn missing_name_and_age() {
-        assert!(matches!(
-            ",".parse::<Person>(),
-            Err(ParsePersonError::NoName | ParsePersonError::ParseInt(_))
-        ));
+    fn test_try_from_array_negative() {
+        let result = Color::try_from([-1, 100, 150]);
+        assert!(result.is_err());
     }
 
     #[test]
-    fn missing_name_and_invalid_age() {
-        assert!(matches!(
-            ",one".parse::<Person>(),
-            Err(ParsePersonError::NoName | ParsePersonError::ParseInt(_))
-        ));
-    }
-
-    #[test]
-    fn trailing_comma() {
-        assert_eq!("John,32,".parse::<Person>(), Err(ParsePersonError::BadLen));
-    }
-
-    #[test]
-    fn trailing_comma_and_some_string() {
-        assert_eq!(
-            "John,32,man".parse::<Person>(),
-            Err(ParsePersonError::BadLen)
-        );
+    fn test_try_from_slice_negative() {
+        let result = Color::try_from(&[-1, 50, 75][..]);
+        assert!(result.is_err());
     }
 }

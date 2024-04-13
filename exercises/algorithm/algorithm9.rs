@@ -2,8 +2,6 @@
 	heap
 	This question requires you to implement a binary heap function
 */
-// I AM NOT DONE
-
 use std::cmp::Ord;
 use std::default::Default;
 
@@ -37,7 +35,9 @@ where
     }
 
     pub fn add(&mut self, value: T) {
-        //TODO
+        self.items.push(value);
+        self.count += 1;
+        self.bubble_up(self.count);
     }
 
     fn parent_idx(&self, idx: usize) -> usize {
@@ -57,42 +57,62 @@ where
     }
 
     fn smallest_child_idx(&self, idx: usize) -> usize {
-        //TODO
-		0
+        let left_idx = self.left_child_idx(idx);
+        let right_idx = self.right_child_idx(idx);
+
+        if right_idx > self.count || (self.comparator)(&self.items[left_idx], &self.items[right_idx])
+        {
+            left_idx
+        } else {
+            right_idx
+        }
     }
+
+    fn bubble_up(&mut self, mut idx: usize) {
+        while idx > 1 && (self.comparator)(&self.items[idx], &self.items[self.parent_idx(idx)]) {
+            let parent_idx = self.parent_idx(idx);
+            let item = self.items.remove(idx);
+            self.items.insert(parent_idx, item);
+            idx = parent_idx;
+        }
+    }
+    
+    fn bubble_down(&mut self, mut idx: usize) {
+        while self.children_present(idx) {
+            let smallest_child_idx = self.smallest_child_idx(idx);
+            if (self.comparator)(&self.items[smallest_child_idx], &self.items[idx]) {
+                self.items.swap(smallest_child_idx, idx);
+                idx = smallest_child_idx;
+            } else {
+                break;
+            }
+        }
+    }    
+    
 }
 
-impl<T> Heap<T>
-where
-    T: Default + Ord,
-{
-    /// Create a new MinHeap
-    pub fn new_min() -> Self {
-        Self::new(|a, b| a < b)
-    }
-
-    /// Create a new MaxHeap
-    pub fn new_max() -> Self {
-        Self::new(|a, b| a > b)
-    }
-}
-
-impl<T> Iterator for Heap<T>
+impl<T: Clone> Iterator for Heap<T>
 where
     T: Default,
 {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        //TODO
-		None
+        if self.is_empty() {
+            return None;
+        }
+        let max_item = self.items[1].clone();
+        self.items.swap(1, self.count);
+        self.count -= 1;
+        self.items.pop();
+        self.bubble_down(1);
+        Some(max_item)
     }
 }
 
 pub struct MinHeap;
 
 impl MinHeap {
-    #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Heap<T>
     where
         T: Default + Ord,
@@ -104,7 +124,6 @@ impl MinHeap {
 pub struct MaxHeap;
 
 impl MaxHeap {
-    #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Heap<T>
     where
         T: Default + Ord,

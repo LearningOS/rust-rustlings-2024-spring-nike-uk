@@ -9,7 +9,8 @@
 // Execute `rustlings hint from_str` or use the `hint` watch subcommand for a
 // hint.
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 struct Color {
@@ -19,46 +20,63 @@ struct Color {
 }
 
 #[derive(Debug)]
-struct IntoColorError;
+struct ParseColorError;
 
 impl TryFrom<(i16, i16, i16)> for Color {
-    type Error = IntoColorError;
+    type Error = ParseColorError;
 
     fn try_from(tuple: (i16, i16, i16)) -> Result<Self, Self::Error> {
         let (red, green, blue) = tuple;
         if red < 0 || green < 0 || blue < 0 {
-            return Err(IntoColorError);
+            return Err(ParseColorError);
         }
         Ok(Color { red, green, blue })
     }
-}
+} 
 
 impl TryFrom<[i16; 3]> for Color {
-    type Error = IntoColorError;
+    type Error = ParseColorError;
 
     fn try_from(arr: [i16; 3]) -> Result<Self, Self::Error> {
         let [red, green, blue] = arr;
         if red < 0 || green < 0 || blue < 0 {
-            return Err(IntoColorError);
+            return Err(ParseColorError);
         }
         Ok(Color { red, green, blue })
     }
 }
 
 impl TryFrom<&[i16]> for Color {
-    type Error = IntoColorError;
+    type Error = ParseColorError;
 
     fn try_from(slice: &[i16]) -> Result<Self, Self::Error> {
         if slice.len() != 3 {
-            return Err(IntoColorError);
+            return Err(ParseColorError);
         }
         let red = slice[0];
         let green = slice[1];
         let blue = slice[2];
         if red < 0 || green < 0 || blue < 0 {
-            return Err(IntoColorError);
+            return Err(ParseColorError);
         }
         Ok(Color { red, green, blue })
+    }
+}
+
+impl FromStr for Color {
+    type Err = ParseColorError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let components: Vec<i16> = s
+            .split(',')
+            .filter_map(|c| c.parse::<i16>().ok())
+            .collect();
+
+        if components.len() != 3 {
+            return Err(ParseColorError);
+        }
+
+        Color::try_from(components.as_slice())
     }
 }
 
@@ -70,7 +88,7 @@ fn main() {
     let arr_color: Color = [50, 100, 150].try_into().unwrap();
     println!("{:?}", arr_color);
 
-    let slice_color: Color = &[25, 50, 75][..].try_into().unwrap();
+    let slice_color: Color = [25, 50, 75][..].try_into().unwrap();
     println!("{:?}", slice_color);
 }
 
@@ -112,5 +130,17 @@ mod tests {
     fn test_try_from_slice_negative() {
         let result = Color::try_from(&[-1, 50, 75][..]);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_str() {
+        let color = "100,150,200".parse::<Color>().unwrap();
+        assert_eq!(color, Color { red: 100, green: 150, blue: 200 });
+    }
+
+    #[test]
+    fn test_from_str_invalid() {
+        assert!("100,150".parse::<Color>().is_err());
+        assert!("100,150,200,250".parse::<Color>().is_err());
     }
 }

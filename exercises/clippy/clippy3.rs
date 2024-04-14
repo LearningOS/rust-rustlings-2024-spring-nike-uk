@@ -4,9 +4,8 @@
 //
 // Execute `rustlings hint clippy3` or use the `hint` watch subcommand for a hint.
 
-#[allow(unused_variables, unused_assignments)]
 fn main() {
-    let my_option: Option<()> = None;
+    let my_option: Option<()> = Some(());
     if my_option.is_none() {
         panic!("Expected Some");
     }
@@ -17,7 +16,7 @@ fn main() {
     ];
     println!("My array! Here it is: {:?}", my_arr);
 
-    let mut my_empty_vec = vec![1,2,3,4,5];
+    let mut my_empty_vec = Vec::<i32>::new();
     my_empty_vec.clear();
     println!("This Vec is empty, see? {:?}", my_empty_vec);
 
